@@ -1,7 +1,7 @@
 const { default: puppeteer } = require("puppeteer");
 const logger = require("../utils/logger");
 
-const title = "Brower";
+const title = "BROWER";
 module.exports = class LoadBrowser {
   constructor() {
     this.browser = null;
@@ -10,7 +10,7 @@ module.exports = class LoadBrowser {
   async init(config) {
     let load = logger.load(title, "Khởi tạo trình duyệt ẩn danh...");
     this.browser = await puppeteer.launch({
-      headless: true,
+      headless: false,
       args: ["--disable-dev-shm-usage", "--disable-extensions"],
       ...config.browserOptions,
     });
