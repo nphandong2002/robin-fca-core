@@ -1,12 +1,13 @@
-const { theme } = require("./theme");
-const readline = require("readline");
+const { theme } = require('./theme');
+const readline = require('readline');
 
-const log = (prefix, title, ...props) => {
-  return console.log(`${prefix} ${theme.style.message(title)}:`, ...props);
-};
 let tickInterval;
+const log = (prefix, title, ...props) => {
+  if (tickInterval) clearInterval(tickInterval);
+  return console.log(`${prefix} [${theme.style.message(title.toLocaleUpperCase())}]:`, ...props);
+};
 module.exports = {
-  load: (msg) => {
+  load: (title, msg) => {
     let inc = -1;
     if (tickInterval) clearInterval(tickInterval);
     tickInterval = setInterval(() => {
@@ -14,7 +15,7 @@ module.exports = {
       const frame = theme.spinner.frames[inc % theme.spinner.frames.length];
       readline.clearLine(process.stdout, 1);
       readline.cursorTo(process.stdout, 0);
-      process.stdout.write(`[FCA]: ${frame} ${msg}`);
+      process.stdout.write(`[${title}]: ${frame} ${msg}`);
     }, theme.spinner.interval);
     return {
       stop: () => {

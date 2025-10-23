@@ -7,21 +7,24 @@
     "robin-fca": "./bin/robin-fca"
   },
   "scripts": {
-    "start": "node examples/server.js",
-    "test": "node ./node_modules/.bin/mocha --reporter spec || echo 'no mocha'"
+    "dev": "node ./src"
   },
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "bluebird": "^2.11.0",
     "body-parser": "^1.20.0",
+    "cheerio": "^1.1.2",
     "crypto": "^1.0.1",
     "express": "^4.18.0",
     "inquirer": "^12.10.0",
     "node-fetch": "^2.6.7",
-    "puppeteer": "^24.25.0"
+    "puppeteer": "^24.25.0",
+    "request": "^2.88.2"
   },
   "devDependencies": {
-    "mocha": "^10.2.0"
+    "mocha": "^10.2.0",
+    "nodemon": "^3.1.10"
   },
   "engines": {
     "node": ">=18"

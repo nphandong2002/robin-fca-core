@@ -1,22 +1,27 @@
-const { default: puppeteer } = require("puppeteer");
-const logger = require("../utils/logger");
+const { default: puppeteer } = require('puppeteer');
+const logger = require('../utils/logger');
 
-const title = "BROWER";
+const title = 'BROWER';
 module.exports = class LoadBrowser {
   constructor() {
     this.browser = null;
     this.page = null;
   }
   async init(config) {
-    let load = logger.load(title, "Khởi tạo trình duyệt ẩn danh...");
+    let load = logger.load(title, 'Khởi tạo trình duyệt ẩn danh...');
     this.browser = await puppeteer.launch({
-      headless: false,
-      args: ["--disable-dev-shm-usage", "--disable-extensions"],
+      headless: true,
+      args: ['--disable-dev-shm-usage', '--disable-extensions'],
       ...config.browserOptions,
     });
+
     this.page = await this.browser.newPage();
+    this.page.userAgent = await this.browser.userAgent();
     load.stop();
-    logger.info(title, "Trình duyệt ẩn danh đã sẵn sàng!");
+    logger.info(title, 'Trình duyệt ẩn danh đã sẵn sàng!');
     return;
+  }
+  getUserAgent() {
+    return this.page.userAgent;
   }
 };

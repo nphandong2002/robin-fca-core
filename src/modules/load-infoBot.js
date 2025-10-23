@@ -1,37 +1,69 @@
-const logger = require("../utils/logger");
+const inquirer = require('inquirer').default;
 
-const inquirer = require("inquirer").default;
+const logger = require('../utils/logger');
 
+const title = 'INFO BOT';
 class SettingAccount {
   constructor(vault) {
     this.vault = vault;
   }
-  getDbAccount() {
-    return this.vault.get("account");
+  getDbAccounts() {
+    return this.vault.get('accounts') || [];
   }
-  async createNewAccount() {
-    logger.info("INFO BOT", "Nhập thông tin tài khoản.");
+
+  async choseAccount() {
+    const accounts = this.getDbAccounts();
+    if (!accounts.length) return this.formAccount();
+    const { selectedAccount } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'selectedAccount',
+        message: `[${title}]: Chọn tài khoản để sử dụng`,
+        choices: accounts
+          .map((acc, index) => ({
+            name: `${acc.id} - ${acc.username} (${acc.isActive ? 'Active' : 'Inactive'})`,
+            value: index,
+          }))
+          .concat([{ name: 'Nhập tài khoản mới', value: -1 }]),
+      },
+    ]);
+    if (selectedAccount === -1) return this.formAccount();
+    return accounts[selectedAccount];
+  }
+  async formAccount(account = {}) {
+    logger.info('INFO BOT', 'Nhập thông tin tài khoản.');
     const { username, password } = await inquirer.prompt([
       {
-        type: "input",
-        name: "username",
-        message: "Nhập email/sđt:",
+        type: 'input',
+        name: 'username',
+        message: `[${title}]: Nhập email/sđt`,
+        default: account.username || '',
         validate: (value) => {
-          if (!value.trim()) return "Email/sđt không được để trống!";
+          if (!value.trim()) return 'Email/sđt không được để trống!';
           return true;
         },
       },
       {
-        type: "password",
-        name: "password",
-        message: "Nhập mật khẩu:",
+        type: 'password',
+        name: 'password',
+        mask: '*',
+        message: `[${title}]: Nhập mật khẩu`,
         validate: (value) => {
-          if (!value.trim()) return "Mật khẩu không được để trống!";
+          if (!value.trim()) return 'Mật khẩu không được để trống!';
           return true;
         },
       },
     ]);
-    return { username, password, cookie: "", fullName: "", id: 0, pass2FA: "", isActive: false };
+    return {
+      cookie: '',
+      fullName: '',
+      id: 0,
+      pass2FA: '',
+      isActive: false,
+      ...account,
+      username,
+      password,
+    };
   }
 }
 
@@ -45,20 +77,8 @@ module.exports = class LoadInfoBot {
     this.page = page;
     this.vault = vault;
     this.settingAcc = new SettingAccount(this.vault);
-    this.account = await this.checkAccountInVault();
+    this.userAgent = this.page.userAgent;
+    this.account = await this.settingAcc.choseAccount();
     return;
-  }
-  async loginFB() {
-    await this.page.goto("https://www.facebook.com/login.php", {
-      waitUntil: "networkidle2",
-    });
-    await this.page.type("#email", this.account.username, { delay: 500 });
-    await this.page.type("#pass", this.account.password, { delay: 500 });
-    await Promise.all([page.click('[type="submit"]'), page.waitForNavigation({ waitUntil: "networkidle2" })]);
-  }
-  checkAccountInVault() {
-    const account = this.settingAcc.getDbAccount();
-    if (!account || !account.id) return this.settingAcc.createNewAccount();
-    return account;
   }
 };
