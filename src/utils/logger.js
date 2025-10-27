@@ -3,7 +3,11 @@ const readline = require('readline');
 
 let tickInterval;
 const log = (prefix, title, ...props) => {
-  if (tickInterval) clearInterval(tickInterval);
+  if (tickInterval) {
+    clearInterval(tickInterval);
+    readline.clearLine(process.stdout, 1);
+    readline.cursorTo(process.stdout, 0);
+  }
   return console.log(`${prefix} [${theme.style.message(title.toLocaleUpperCase())}]:`, ...props);
 };
 module.exports = {
