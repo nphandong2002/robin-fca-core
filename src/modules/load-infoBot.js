@@ -79,24 +79,24 @@ module.exports = class LoadInfoBot {
 
     await brower.syncCookiesToJar();
 
-    this.data.irisSeqID = await brower
-      .post('https://www.facebook.com/api/graphqlbatch/', {
-        av: null,
-        queries: JSON.stringify({
-          o0: {
-            doc_id: '3336396659757871',
-            query_params: {
-              limit: 1,
-              before: null,
-              tags: ['INBOX'],
-              includeDeliveryReceipts: false,
-              includeSeqID: true,
-            },
-          },
-        }),
-      })
+    // this.data.irisSeqID = await brower
+    //   .post('https://www.facebook.com/api/graphqlbatch/', {
+    //     av: null,
+    //     queries: JSON.stringify({
+    //       o0: {
+    //         doc_id: '3336396659757871',
+    //         query_params: {
+    //           limit: 1,
+    //           before: null,
+    //           tags: ['INBOX'],
+    //           includeDeliveryReceipts: false,
+    //           includeSeqID: true,
+    //         },
+    //       },
+    //     }),
+    //   })
 
-      .then(parseJSON(brower));
+    //   .then(parseJSON(brower));
     return;
   }
   getUserInfo() {

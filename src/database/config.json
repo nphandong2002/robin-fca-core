@@ -1,5 +1,8 @@
 {
     "pathFileVault": "./src/database/vault.dat",
     "userAgent": "",
-    "browserOptions": {}
+    "browserOptions": {},
+    "ws": {
+        "port": 1902
+    }
 }

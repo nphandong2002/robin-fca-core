@@ -9,10 +9,14 @@ class MainBot {
   constructor() {
     this.config = new LoadConfig('./src/database/config.json', {
       browserOptions: {},
+      ws: {
+        port: 1902,
+      },
     });
     this.vault = new LoadVault();
     this.brower = new LoadBrowser();
     this.infoBot = new LoadInfoBot();
+    this.loadWsServer = new LoadWsServer();
     this.ctx = {};
   }
   async init() {
@@ -22,12 +26,10 @@ class MainBot {
       await this.vault.init(this.config.data);
       await this.brower.init(this.config.data);
       await this.infoBot.init(this.brower, this.vault);
-      console.log(this.infoBot.data);
+      await this.loadWsServer.init(this);
     } catch (err) {
       logger.error('BOT', err);
     }
-
-    new LoadWsServer().init(this);
   }
 }
 
