@@ -2,6 +2,7 @@ const inquirer = require('inquirer').default;
 const { default: puppeteer } = require('puppeteer');
 
 const logger = require('../utils/logger');
+const { parseJSON } = require('../utils/common');
 
 const title = 'INFO BOT';
 class SettingAccount {
@@ -29,7 +30,27 @@ class SettingAccount {
       },
     ]);
     if (selectedAccount === -1) return this.newAccount();
-    return accounts[selectedAccount];
+    const { action } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'action',
+        message: `Bạn muốn làm gì với tài khoản [${accounts[selectedAccount].fullName}]?`,
+        choices: [
+          { name: '✅ Sử dụng', value: 'use' },
+          { name: '❌ Xóa', value: 'delete' },
+          { name: '↩️ Quay lại', value: 'back' },
+        ],
+      },
+    ]);
+
+    if (action === 'use') return accounts[selectedAccount];
+    if (action === 'delete') {
+      accounts.splice(selectedAccount, 1);
+      this.vault.set('accounts', accounts);
+      logger.warn('Account', 'Đã xóa tài khoản khỏi danh sách!');
+      return this.choseAccount();
+    }
+    if (action === 'back') return this.choseAccount();
   }
   newAccount() {
     return {
@@ -55,7 +76,9 @@ module.exports = class LoadInfoBot {
     this.userAgent = this.page.userAgent;
     this.account = await this.settingAcc.choseAccount();
     await this.handleLogin();
+
     await brower.syncCookiesToJar();
+
     this.data.irisSeqID = await brower
       .post('https://www.facebook.com/api/graphqlbatch/', {
         av: null,
@@ -73,7 +96,7 @@ module.exports = class LoadInfoBot {
         }),
       })
 
-      .then((resData) => resData);
+      .then(parseJSON(brower));
     return;
   }
   getUserInfo() {
@@ -89,7 +112,7 @@ module.exports = class LoadInfoBot {
   }
   saveAccount() {
     const accounts = this.settingAcc.getDbAccounts();
-    const existingIndex = accounts.findIndex((acc) => acc.id === this.account.id);
+    const existingIndex = accounts.findIndex((acc) => (acc) => String(acc.id) === String(this.account.id));
     if (existingIndex !== -1) accounts[existingIndex] = this.account;
     else accounts.push(this.account);
     this.vault.set('accounts', accounts);
@@ -138,12 +161,12 @@ module.exports = class LoadInfoBot {
     });
 
     logger.info('Login', 'Vui lòng đăng nhập trong cửa sổ Facebook...');
+    await pageDom.waitForNavigation();
     await this.waitForLoginSuccess(pageDom);
     const cookies = await pageDom.cookies();
     this.account.cookie = cookies;
     await browser.close();
     await this.page.setCookie(...cookies);
-    this.saveAccount();
     return;
   }
   async handleLogin() {

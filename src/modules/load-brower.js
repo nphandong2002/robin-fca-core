@@ -62,7 +62,7 @@ module.exports = class LoadBrowser {
       method: 'GET',
       jar: this.jar,
       gzip: true,
-    }).then((res) => res[0]);
+    }).then((res) => res);
   }
 
   post(url, form) {
@@ -74,6 +74,6 @@ module.exports = class LoadBrowser {
       form,
       jar: this.jar,
       gzip: true,
-    }).then((res) => res[0]);
+    }).then((res) => res);
   }
 };

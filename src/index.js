@@ -18,10 +18,14 @@ class MainBot {
   async init() {
     console.clear();
     this.config.init();
-    await this.vault.init(this.config.data);
-    await this.brower.init(this.config.data);
-    await this.infoBot.init(this.brower, this.vault);
-    console.log(this.infoBot.data);
+    try {
+      await this.vault.init(this.config.data);
+      await this.brower.init(this.config.data);
+      await this.infoBot.init(this.brower, this.vault);
+      console.log(this.infoBot.data);
+    } catch (err) {
+      logger.error('BOT', err);
+    }
 
     new LoadWsServer().init(this);
   }
