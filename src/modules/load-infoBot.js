@@ -2,7 +2,6 @@ const inquirer = require('inquirer').default;
 const { default: puppeteer } = require('puppeteer');
 
 const logger = require('../utils/logger');
-const { parseJSON } = require('../utils/common');
 
 const title = 'INFO BOT';
 class SettingAccount {
@@ -103,10 +102,12 @@ module.exports = class LoadInfoBot {
     return this.page.evaluate(() => {
       const currentUser = require('CurrentUserInitialData');
       const mqttConfig = require('MqttConfig');
+      const html = document.documentElement.innerHTML.match(/\\"upsertSequenceId\\",\[19,\\"(.+?)\\"/);
       return {
         fullName: currentUser.NAME,
         fbId: currentUser.USER_ID,
         mqttConfig: mqttConfig,
+        irisSeqID: (html.length > 0 && html[1]) || null,
       };
     });
   }

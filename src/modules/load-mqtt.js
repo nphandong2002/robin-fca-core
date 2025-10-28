@@ -14,7 +14,9 @@ module.exports = class LoadMqtt {
 
   async init(ctx) {
     this.ctx = ctx;
-    const host = `${ctx.infoBot.data.mqttConfig.endpoint}&sid=${this.sessionID}&cid=${this.guid}`;
+    this.infoBot = ctx.infoBot.data;
+    this.lastSeqId = this.infoBot.irisSeqID;
+    const host = `${this.infoBot.mqttConfig.endpoint}&sid=${this.sessionID}&cid=${this.guid}`;
     const cookies = await ctx.brower.page.cookies();
     const cookieString = cookies.map((c) => `${c.name}=${c.value}`).join('; ');
     const options = {
@@ -22,7 +24,7 @@ module.exports = class LoadMqtt {
       protocolId: 'MQIsdp',
       protocolVersion: 3,
       username: JSON.stringify({
-        u: ctx.infoBot.data.userID,
+        u: this.infoBot.userID,
         s: this.sessionID,
         chat_on: false,
         fg: false,

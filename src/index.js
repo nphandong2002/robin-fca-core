@@ -1,6 +1,7 @@
 const LoadBrowser = require('./modules/load-brower');
 const LoadConfig = require('./modules/load-config');
 const LoadInfoBot = require('./modules/load-infoBot');
+const LoadMqtt = require('./modules/load-mqtt');
 const LoadVault = require('./modules/load-vault');
 const LoadWsServer = require('./modules/load-wsServer');
 const logger = require('./utils/logger');
@@ -17,7 +18,6 @@ class MainBot {
     this.brower = new LoadBrowser();
     this.infoBot = new LoadInfoBot();
     this.loadWsServer = new LoadWsServer();
-    this.ctx = {};
   }
   async init() {
     console.clear();
@@ -26,7 +26,8 @@ class MainBot {
       await this.vault.init(this.config.data);
       await this.brower.init(this.config.data);
       await this.infoBot.init(this.brower, this.vault);
-      await this.loadWsServer.init(this);
+      // await this.loadWsServer.init(this);
+      new LoadMqtt().init(this);
     } catch (err) {
       logger.error('BOT', err);
     }
