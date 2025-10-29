@@ -122,10 +122,10 @@ module.exports = class LoadInfoBot {
     let page = this.page;
     try {
       await page.setCookie(...this.account.cookie);
-      await page.goto('https://www.facebook.com/', { waitUntil: 'networkidle2' });
+      await page.goto('https://www.facebook.com/', { waitUntil: 'networkidle2', timeout: 0 });
       const loggedIn = await page.evaluate(() => {
         try {
-          return typeof require === 'function' && !!require('MessengerParticipants.bs');
+          return typeof require === 'function' && !!require('MqttConfig');
         } catch (e) {
           return false;
         }
@@ -159,10 +159,11 @@ module.exports = class LoadInfoBot {
     const pageDom = await browser.newPage();
     await pageDom.goto('https://www.facebook.com/login.php', {
       waitUntil: 'networkidle2',
+      timeout: 60 * 10000,
     });
 
     logger.info('Login', 'Vui lòng đăng nhập trong cửa sổ Facebook...');
-    await pageDom.waitForNavigation();
+    // await pageDom.waitForNavigation();
     await this.waitForLoginSuccess(pageDom);
     const cookies = await pageDom.cookies();
     this.account.cookie = cookies;

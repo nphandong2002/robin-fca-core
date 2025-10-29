@@ -15,6 +15,7 @@ module.exports = class LoadBrowser {
     let load = logger.load(title, 'Khởi tạo trình duyệt ẩn danh...');
     this.browser = await puppeteer.launch({
       headless: true,
+      timeout: 60 * 10000,
       args: ['--disable-dev-shm-usage', '--disable-extensions'],
       ...config.browserOptions,
     });
