@@ -2,6 +2,7 @@ var websocket = require('websocket-stream');
 const mqtt = require('mqtt');
 const { getGUID } = require('../utils/common');
 const logger = require('../utils/logger');
+const { formatDeltaMessage, _formatAttachment } = require('../utils/mqtt');
 
 const titleMqtt = 'MQTT';
 
@@ -13,6 +14,7 @@ module.exports = class LoadMqtt {
     this.syncToken = null;
     this.cookies = [];
     this.userAgent = '';
+    this.subscribers = new Set();
   }
   getUsername(userID, sessionID, guid) {
     return JSON.stringify({
@@ -105,8 +107,149 @@ module.exports = class LoadMqtt {
     );
   }
   parseDelta(delta) {
-    switch (delta.class) {
-      case 'NewMessage':
+    if (delta.class === 'NewMessage') {
+      try {
+        sendDateSub(null, formatDeltaMessage(delta));
+      } catch (err) {
+        sendDateSub({
+          error:
+            'Problem parsing message object. Please open an issue at https://github.com/VangBanLaNhat/fca-unofficial/issues.',
+          detail: err,
+          res: delta,
+          type: 'parse_error',
+        });
+      }
+    }
+    if (delta.class === 'ClientPayload') {
+      let clientPayload = JSON.parse(String.fromCharCode.apply(null, delta.payload));
+      if (!clientPayload?.deltas) return;
+      for (var i in clientPayload.deltas) {
+        var delta = clientPayload.deltas[i];
+        if (delta.deltaMessageReaction)
+          this.sendDateSub(null, {
+            type: 'message_reaction',
+            threadID: (delta.deltaMessageReaction.threadKey.threadFbId
+              ? delta.deltaMessageReaction.threadKey.threadFbId
+              : delta.deltaMessageReaction.threadKey.otherUserFbId
+            ).toString(),
+            messageID: delta.deltaMessageReaction.messageId,
+            reaction: delta.deltaMessageReaction.reaction,
+            senderID: delta.deltaMessageReaction.senderId.toString(),
+            userID: delta.deltaMessageReaction.userId.toString(),
+          });
+        else if (delta.deltaRecallMessageData)
+          globalCallback(null, {
+            type: 'message_unsend',
+            threadID: (delta.deltaRecallMessageData.threadKey.threadFbId
+              ? delta.deltaRecallMessageData.threadKey.threadFbId
+              : delta.deltaRecallMessageData.threadKey.otherUserFbId
+            ).toString(),
+            messageID: delta.deltaRecallMessageData.messageID,
+            senderID: delta.deltaRecallMessageData.senderID.toString(),
+            deletionTimestamp: delta.deltaRecallMessageData.deletionTimestamp,
+            timestamp: delta.deltaRecallMessageData.timestamp,
+          });
+        else if (delta.deltaMessageReply) {
+          var mdata = JSON.parse(delta?.deltaMessageReply?.message?.data?.prng || '[]');
+          var m_id = mdata.map((u) => u.i);
+          var m_offset = mdata.map((u) => u.o);
+          var m_length = mdata.map((u) => u.l);
+
+          var mentions = {};
+
+          for (var i = 0; i < m_id.length; i++)
+            mentions[m_id[i]] = (delta.deltaMessageReply.message.body || '').substring(
+              m_offset[i],
+              m_offset[i] + m_length[i],
+            );
+          var callbackToReturn = {
+            type: 'message_reply',
+            threadID: (delta.deltaMessageReply.message.messageMetadata.threadKey.threadFbId
+              ? delta.deltaMessageReply.message.messageMetadata.threadKey.threadFbId
+              : delta.deltaMessageReply.message.messageMetadata.threadKey.otherUserFbId
+            ).toString(),
+            messageID: delta.deltaMessageReply.message.messageMetadata.messageId,
+            senderID: delta.deltaMessageReply.message.messageMetadata.actorFbId.toString(),
+            attachments: delta.deltaMessageReply.message.attachments
+              .map(function (att) {
+                var mercury = JSON.parse(att.mercuryJSON);
+                Object.assign(att, mercury);
+                return att;
+              })
+              .map((att) => {
+                var x;
+                try {
+                  x = _formatAttachment(att);
+                } catch (ex) {
+                  x = att;
+                  x.error = ex;
+                  x.type = 'unknown';
+                }
+                return x;
+              }),
+            args: (delta.deltaMessageReply.message.body || '').trim().split(/\s+/),
+            body: delta.deltaMessageReply.message.body || '',
+            isGroup: !!delta.deltaMessageReply.message.messageMetadata.threadKey.threadFbId,
+            mentions: mentions,
+            timestamp: delta.deltaMessageReply.message.messageMetadata.timestamp,
+            participantIDs: (delta.deltaMessageReply.message.participants || []).map((e) => e.toString()),
+          };
+          if (delta.deltaMessageReply.repliedToMessage) {
+            mdata = JSON.parse(delta.deltaMessageReply?.repliedToMessage?.data?.prng || '[]');
+            m_id = mdata.map((u) => u.i);
+            m_offset = mdata.map((u) => u.o);
+            m_length = mdata.map((u) => u.l);
+
+            var rmentions = {};
+
+            for (var i = 0; i < m_id.length; i++)
+              rmentions[m_id[i]] = (delta.deltaMessageReply.repliedToMessage.body || '').substring(
+                m_offset[i],
+                m_offset[i] + m_length[i],
+              );
+            callbackToReturn.messageReply = {
+              threadID: (delta.deltaMessageReply.repliedToMessage.messageMetadata.threadKey.threadFbId
+                ? delta.deltaMessageReply.repliedToMessage.messageMetadata.threadKey.threadFbId
+                : delta.deltaMessageReply.repliedToMessage.messageMetadata.threadKey.otherUserFbId
+              ).toString(),
+              messageID: delta.deltaMessageReply.repliedToMessage.messageMetadata.messageId,
+              senderID: delta.deltaMessageReply.repliedToMessage.messageMetadata.actorFbId.toString(),
+              attachments: delta.deltaMessageReply.repliedToMessage.attachments
+                .map(function (att) {
+                  var mercury = JSON.parse(att.mercuryJSON);
+                  Object.assign(att, mercury);
+                  return att;
+                })
+                .map((att) => {
+                  var x;
+                  try {
+                    x = _formatAttachment(att);
+                  } catch (ex) {
+                    x = att;
+                    x.error = ex;
+                    x.type = 'unknown';
+                  }
+                  return x;
+                }),
+              args: (delta.deltaMessageReply.repliedToMessage.body || '').trim().split(/\s+/),
+              body: delta.deltaMessageReply.repliedToMessage.body || '',
+              isGroup: !!delta.deltaMessageReply.repliedToMessage.messageMetadata.threadKey.threadFbId,
+              mentions: rmentions,
+              timestamp: delta.deltaMessageReply.repliedToMessage.messageMetadata.timestamp,
+              participantIDs: (delta.deltaMessageReply.repliedToMessage.participants || []).map((e) => e.toString()),
+            };
+          }
+        }
+      }
+    }
+  }
+  sendDateSub(result) {
+    for (const cb of this.subscribers) {
+      try {
+        cb(result);
+      } catch (err) {
+        logger.error(titleMqtt, `Lỗi khi chạy callback: ${err.message}`);
+      }
     }
   }
   handleMqttMessage(topic, message, _packet) {
@@ -141,5 +284,13 @@ module.exports = class LoadMqtt {
     this.userAgent = ctx.brower.page.userAgent;
     this.cookies = await ctx.brower.page.cookies();
     this.setupMqtt();
+  }
+  subscribe(callback) {
+    if (typeof callback !== 'function') throw new Error('Callback phải là một function');
+    this.subscribers.add(callback);
+    return () => {
+      this.subscribers.delete(callback);
+      logger.info(titleMqtt, 'Đã hủy đăng ký callback');
+    };
   }
 };
