@@ -377,8 +377,69 @@ function formatDeltaMessage(m) {
     participantIDs: m.participants || [],
   };
 }
+function getAdminTextMessageType(type) {
+  switch (type) {
+    case 'joinable_group_link_mode_change':
+      return 'log:link-status';
+    case 'magic_words':
+      return 'log:magic-words';
+    case 'change_thread_theme':
+      return 'log:thread-color';
+    case 'change_thread_icon':
+      return 'log:thread-icon';
+    case 'change_thread_nickname':
+      return 'log:user-nickname';
+    case 'change_thread_admins':
+      return 'log:thread-admins';
+    case 'group_poll':
+      return 'log:thread-poll';
+    case 'change_thread_approval_mode':
+      return 'log:thread-approval-mode';
+    case 'messenger_call_log':
+    case 'participant_joined_group_call':
+      return 'log:thread-call';
+    case 'pin_messages_v2':
+      return 'log:thread-pinned';
+    default:
+      return type;
+  }
+}
+function formatDeltaEvent(m) {
+  var logMessageType;
+  var logMessageData;
 
+  switch (m.class) {
+    case 'AdminTextMessage':
+      logMessageData = m.untypedData;
+      logMessageType = getAdminTextMessageType(m.type);
+      break;
+    case 'ThreadName':
+      logMessageType = 'log:thread-name';
+      logMessageData = { name: m.name };
+      break;
+    case 'ParticipantsAddedToGroupThread':
+      logMessageType = 'log:subscribe';
+      logMessageData = { addedParticipants: m.addedParticipants };
+      break;
+    case 'ParticipantLeftGroupThread':
+      logMessageType = 'log:unsubscribe';
+      logMessageData = { leftParticipantFbId: m.leftParticipantFbId };
+      break;
+  }
+
+  return {
+    type: 'event',
+    threadID: formatID(
+      (m.messageMetadata.threadKey.threadFbId || m.messageMetadata.threadKey.otherUserFbId).toString(),
+    ),
+    logMessageType: logMessageType,
+    logMessageData: logMessageData,
+    logMessageBody: m.messageMetadata.adminText,
+    author: m.messageMetadata.actorFbId,
+  };
+}
 module.exports = {
   formatDeltaMessage,
   _formatAttachment,
+  formatDeltaEvent,
 };

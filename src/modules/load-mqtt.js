@@ -2,7 +2,29 @@ var websocket = require('websocket-stream');
 const mqtt = require('mqtt');
 const { getGUID } = require('../utils/common');
 const logger = require('../utils/logger');
-const { formatDeltaMessage, _formatAttachment } = require('../utils/mqtt');
+const { formatDeltaMessage, _formatAttachment, formatDeltaEvent } = require('../utils/mqtt');
+
+const topics = [
+  '/ls_req',
+  '/ls_resp',
+  '/legacy_web',
+  '/webrtc',
+  '/rtc_multi',
+  '/onevc',
+  '/br_sr',
+  '/sr_res',
+  '/t_ms',
+  '/thread_typing',
+  '/orca_typing_notifications',
+  '/notify_disconnect',
+  '/orca_presence',
+  '/inbox',
+  '/mercury',
+  '/messaging_events',
+  '/orca_message_notifications',
+  '/pp',
+  '/webrtc_response',
+];
 
 const titleMqtt = 'MQTT';
 
@@ -70,21 +92,7 @@ module.exports = class LoadMqtt {
     // this.setupMqtt();
   }
   handleMqttConnect() {
-    [
-      '/legacy_web',
-      '/webrtc',
-      '/rtc_multi',
-      '/onevc',
-      '/br_sr', //Notification
-      //Need to publish /br_sr right after this
-      '/sr_res',
-      '/t_ms',
-      '/thread_typing',
-      '/orca_typing_notifications',
-      '/notify_disconnect',
-      //Need to publish /messenger_sync_create_queue right after this
-      '/orca_presence',
-    ].forEach((a) => this.mqttClient.subscribe(a));
+    topics.forEach((a) => this.mqttClient.subscribe(a));
     this.mqttClient.publish(
       this.syncToken ? '/messenger_sync_get_diffs' : '/messenger_sync_create_queue',
       JSON.stringify({
@@ -107,11 +115,51 @@ module.exports = class LoadMqtt {
     );
   }
   parseDelta(delta) {
+    if (['ThreadName', 'ParticipantsAddedToGroupThread', 'ParticipantLeftGroupThread'].includes(delta.class)) {
+      try {
+        this.sendDateSub(null, formatDeltaEvent(delta));
+      } catch (err) {
+        logger.error(titleMqtt, delta.class, err);
+      }
+    }
+    if (delta.class === 'ForcedFetch') {
+      //TODO call ws mà làm
+      logger.info(titleMqtt, delta.class, delta);
+    }
+    if (delta.class === 'AdminTextMessage') {
+      switch (delta.type) {
+        case 'joinable_group_link_mode_change':
+        case 'magic_words':
+        case 'pin_messages_v2':
+        case 'change_thread_theme':
+        case 'change_thread_icon':
+        case 'change_thread_nickname':
+        case 'change_thread_admins':
+        case 'change_thread_approval_mode':
+        case 'group_poll':
+        case 'messenger_call_log':
+        case 'participant_joined_group_call':
+          try {
+            this.sendDateSub(null, formatDeltaEvent(delta));
+          } catch (err) {
+            return this.sendDateSub({
+              error:
+                'Problem parsing message object. Please open an issue at https://github.com/Schmavery/facebook-chat-api/issues.',
+              detail: err,
+              res: v.delta,
+              type: 'parse_error',
+            });
+          }
+          return;
+        default:
+          return;
+      }
+    }
     if (delta.class === 'NewMessage') {
       try {
-        sendDateSub(null, formatDeltaMessage(delta));
+        this.sendDateSub(null, formatDeltaMessage(delta));
       } catch (err) {
-        sendDateSub({
+        this.sendDateSub({
           error:
             'Problem parsing message object. Please open an issue at https://github.com/VangBanLaNhat/fca-unofficial/issues.',
           detail: err,
@@ -138,7 +186,7 @@ module.exports = class LoadMqtt {
             userID: delta.deltaMessageReaction.userId.toString(),
           });
         else if (delta.deltaRecallMessageData)
-          globalCallback(null, {
+          this.sendDateSub(null, {
             type: 'message_unsend',
             threadID: (delta.deltaRecallMessageData.threadKey.threadFbId
               ? delta.deltaRecallMessageData.threadKey.threadFbId
@@ -238,15 +286,18 @@ module.exports = class LoadMqtt {
               timestamp: delta.deltaMessageReply.repliedToMessage.messageMetadata.timestamp,
               participantIDs: (delta.deltaMessageReply.repliedToMessage.participants || []).map((e) => e.toString()),
             };
+          } else if (delta.deltaMessageReply.replyToMessageId) {
+            //TODO call sang ws mà lấy
           }
+          this.sendDateSub(null, callbackToReturn);
         }
       }
     }
   }
-  sendDateSub(result) {
+  sendDateSub(err, msg) {
     for (const cb of this.subscribers) {
       try {
-        cb(result);
+        cb(err, msg);
       } catch (err) {
         logger.error(titleMqtt, `Lỗi khi chạy callback: ${err.message}`);
       }

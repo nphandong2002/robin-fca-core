@@ -20,6 +20,7 @@ class MainBot {
     this.brower = new LoadBrowser();
     this.infoBot = new LoadInfoBot();
     this.loadWsServer = new LoadWsServer();
+    this.mqtt = new LoadMqtt();
   }
   async init() {
     console.clear();
@@ -29,9 +30,12 @@ class MainBot {
       await this.brower.init(this.config.data);
       await this.infoBot.init(this.brower, this.vault);
       // await this.loadWsServer.init(this);
-
+      await this.mqtt.init(this);
+      this.mqtt.subscribe((err, msg) => {
+        if (msg) logger.info('MQTT', msg);
+        if (err) logger.error('MQTT', err);
+      });
       this.listenReloadCommand();
-      new LoadMqtt().init(this);
     } catch (err) {
       logger.error('BOT', err);
     }
