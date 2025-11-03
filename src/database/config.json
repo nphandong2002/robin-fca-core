@@ -4,5 +4,6 @@
     "browserOptions": {},
     "ws": {
         "port": 1902
-    }
+    },
+    "pathFileDb": "/src/database/db.json"
 }

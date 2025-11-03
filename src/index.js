@@ -1,5 +1,6 @@
 const LoadBrowser = require('./modules/load-brower');
 const LoadConfig = require('./modules/load-config');
+const LoadDatabase = require('./modules/load-data');
 const LoadInfoBot = require('./modules/load-infoBot');
 const LoadMqtt = require('./modules/load-mqtt');
 const LoadVault = require('./modules/load-vault');
@@ -12,6 +13,7 @@ class MainBot {
   constructor() {
     this.config = new LoadConfig('./src/database/config.json', {
       browserOptions: {},
+      pathFileDb: '/src/database/db.json',
       ws: {
         port: 1902,
       },
@@ -21,6 +23,7 @@ class MainBot {
     this.infoBot = new LoadInfoBot();
     this.loadWsServer = new LoadWsServer();
     this.mqtt = new LoadMqtt();
+    this.database = new LoadDatabase();
   }
   async init() {
     console.clear();
@@ -28,6 +31,7 @@ class MainBot {
     try {
       await this.vault.init(this.config.data);
       await this.brower.init(this.config.data);
+      await this.database.init(this.config.data);
       await this.infoBot.init(this.brower, this.vault);
       // await this.loadWsServer.init(this);
       await this.mqtt.init(this);
